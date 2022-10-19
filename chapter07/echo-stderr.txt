@@ -1,0 +1,6 @@
+#!/bin/bash
+
+echo message1
+echo 'error message1' 1>&2
+echo message2
+echo 'error message2' 1>&2
