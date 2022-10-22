@@ -1,2 +1,14 @@
-message1
-message2
+2022-10-20
+/usr list
+bin
+games
+include
+lib
+lib32
+lib64
+libexec
+libx32
+local
+sbin
+share
+src
