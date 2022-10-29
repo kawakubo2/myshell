@@ -1,0 +1,9 @@
+/test1/file_1
+/test1/file_2
+/test2/file_1
+/test3/file_x
+/test4/file_y
+/test10/file_1
+/test11/file_1
+/work/test1/file_x
+/work/test5/file_1
