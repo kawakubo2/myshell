@@ -25,14 +25,17 @@ extract_one()
         *.tar.bz2 | *.tbz2)
             tar xjf "$file"
             ;;
+        *.tar.xz | *.txz)
+            tar xJf "$file"
+            ;;
         *.tar)
             tar xf "$file"
             ;;
         *.gz)
-            gzip xf "$file" > "$base"
+            gzip -dc "$file" > "$base"
             ;;
         *.bz2)
-            bzip -dc -- "$file" > "$base"
+            bzip2 -dc -- "$file" > "$base"
             ;;
         *.xz)
             xz -dc -- "$file" > $base
