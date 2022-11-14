@@ -45,12 +45,13 @@ line_number=
 
 while getopts :d:s:inhV option
 do
+  # echo "$option"
   case "$option" in
     d)
       directory=$OPTARG
       ;;
     s)
-      find_name="*OPTARG"
+      find_name="*$OPTARG"
       ;;
     i)
       ignore_case=true
@@ -97,4 +98,5 @@ if [[ $line_number == true ]]; then
 fi
 
 find -- "$directory" -type f -name "$find_name" -print0 \
-    | xargs -0 grep "grep_option" -e "$pattern" -- /dev/null
+    | xargs -0 grep "$grep_option" -e "$pattern" -- /dev/null
+
