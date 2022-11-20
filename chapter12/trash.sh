@@ -221,3 +221,120 @@ print_trashinfo()
 
   printf '%s %s %s\n' "${info[DeletionDate]}" "${info[Path]}" "$file_number"
 }
+
+# ゴミ箱に入っているファイルを一覧表示する
+# 引数
+#   $1 : ゴミ箱ディレクトリ
+trash_list()
+{
+  local trash_base_directory=$1
+  local trash_info_directory=${trash_base_directory}/${TRASH_INFO_DIRECTORY_NAME}
+
+  trash_directory_is_exsits "$trash_base_directory" || return 1
+
+  local path=
+  find -- "$trash_info_directory" -mindepth 1 -maxdepth 1 -type f -name '*.trashinfo' -printf \
+    | sort \
+    | while IFS= read -r path
+      do
+        print_trashinfo "$path"
+      done
+}
+
+ゴミ箱に入っているファイルを元の場所に戻す
+引数
+  $1 : ゴミ箱ディレクトリ
+  $2 : 復元もとファイル名
+  $3 : ファイル番号(省略可能)
+trash_restore()
+{
+  local trash_base_directory=$1
+  local file_name=$2
+  local fine_number=$3
+  local trash_file_directory=${trash_base_directory}/${TRASH_FILE_DIRECTORY_NAME}
+  local trash_info_directory=${trash_base_directory}/${TRASH_INFO_DIRECTORY_NAME}
+
+  trash_directory_is_exsits "$trash_base_directory" || return 1
+
+  if [[ -z $file_name ]]; then
+    print_error 'missing file operand'
+    return 1
+  fi
+
+  # ファイル名が指定されている場合、ファイル名そのもの
+  # ファイル番号が指定されている場合、ファイル名_ファイル番号というファイルを探して復元する
+  local restore_target_name=
+  if [[ -z $file_number ]]; then
+    restore_file_name=$file_name
+  else
+    restore_file_name=${file_name}_${file_number}
+  fi
+
+  local restoer_trashinfo_path=${trash_info_directory}/${restore_target_name}.trashinfo
+  local restore_from_path=${trash_file_directory}/${restore_target_name}
+  if [[ ! -f restore_trashinfo_path || ! -e $restore_from_path ]]; then
+    print_error "'$restore_target_name': File not found"
+    return 2
+  fi
+
+  local restore_trashinfo_path
+  restore_to_path=$(grep '^Path=' -- "$restore_trashinfo_path") | sed 's/^Path=//')
+  if [[ -z $restore_to_path ]]; then
+    print_error "'$restore_trashinfo_path': Restore path not found"
+    return 2
+  fi
+
+  # trashinfoファイルに書かれている復元もとファイル名と引数で指定されたファイル名が異なる場合はエラーとする
+  local restore_to_file=${restore_to_path##*/}
+  if [[ $file_name != "${restore_to_file" ]]; then
+    print_error "'$restore_target_name': File not found"
+    return 2
+  fi
+
+  # 復元もとファイルがすでに存在している場合、上書きせずにエラーとする
+  if [[ -e "$restore_to_path" ]]; then
+    print_error "can not restore '$restore_to_path': File already exists"
+    return 3
+  fi
+
+  # 必要であれば復元先ファイルの親ディレクトリを作成する
+  local restore_base_path=${restore_to_path%/*}
+  if [[ -n $restore_base_path && -d $restore_base_path ]]; then
+    mkdir -p -- "$restore_base_path" || return 4
+  fi
+
+  mv -- "$restore_from_path" "$restore_to_path" || return 5
+  rm -- "$restore_trashinfo_path"
+}
+
+sub_command=
+
+case "$1" in
+  put | list | restore)
+    sub_command=$1
+    shift;
+    ;;
+  --help | help)
+    print_help
+    exit 0
+    ;;
+  --version | version)
+    print_version
+    exit 0
+    ;;
+  '')
+    print_error 'missing command'
+    exit 1
+    ;;
+  *)
+    print_error "'$1': Unknown command"
+    exit 1
+    ;;
+esac
+
+parameters=$(getopt -n "$SCRIPT_NAME" \
+  -o d: \
+  -l directory: \
+  -l help -l version \
+  -- "$@")
+
