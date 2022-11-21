@@ -96,23 +96,23 @@ trash_init()
 # 存在する場合は0、そうでない場合は1を返す
 # 引数
 #   $1 : ゴミ箱ディレクトリ
-trash_init()
+trash_directory_is_exsits()
 {
   local trash_base_directory=$1
   local trash_file_directory=${trash_base_directory}/${TRASH_FILE_DIRECTORY_NAME}
   local trash_info_directory=${trash_base_directory}/${TRASH_INFO_DIRECTORY_NAME}
 
-  if [[ ! -d $trash_base_directory ]];
+  if [[ ! -d $trash_base_directory ]]; then
     print_error "'$trash_base_directory': Trash directory not found"
     return 1
   fi
 
-  if [[ ! -d $trash_file_directory ]];
+  if [[ ! -d $trash_file_directory ]]; then
     print_error "'$trash_file_directory': Trash directory not found"
     return 1
   fi
 
-  if [[ ! -d $trash_info_directory ]];
+  if [[ ! -d $trash_info_directory ]]; then
     print_error "'$trash_info_directory': Trash directory not found"
     return 1
   fi
@@ -233,7 +233,7 @@ trash_list()
   trash_directory_is_exsits "$trash_base_directory" || return 1
 
   local path=
-  find -- "$trash_info_directory" -mindepth 1 -maxdepth 1 -type f -name '*.trashinfo' -printf \
+  find -- "$trash_info_directory" -mindepth 1 -maxdepth 1 -type f -name '*.trashinfo' -print \
     | sort \
     | while IFS= read -r path
       do
@@ -241,11 +241,11 @@ trash_list()
       done
 }
 
-ゴミ箱に入っているファイルを元の場所に戻す
-引数
-  $1 : ゴミ箱ディレクトリ
-  $2 : 復元もとファイル名
-  $3 : ファイル番号(省略可能)
+# ゴミ箱に入っているファイルを元の場所に戻す
+# 引数
+#   $1 : ゴミ箱ディレクトリ
+#   $2 : 復元もとファイル名
+#   $3 : ファイル番号(省略可能)
 trash_restore()
 {
   local trash_base_directory=$1
@@ -278,7 +278,7 @@ trash_restore()
   fi
 
   local restore_trashinfo_path
-  restore_to_path=$(grep '^Path=' -- "$restore_trashinfo_path") | sed 's/^Path=//')
+  restore_to_path=$(grep '^Path=' -- "$restore_trashinfo_path" | sed 's/^Path=//')
   if [[ -z $restore_to_path ]]; then
     print_error "'$restore_trashinfo_path': Restore path not found"
     return 2
@@ -286,7 +286,7 @@ trash_restore()
 
   # trashinfoファイルに書かれている復元もとファイル名と引数で指定されたファイル名が異なる場合はエラーとする
   local restore_to_file=${restore_to_path##*/}
-  if [[ $file_name != "${restore_to_file" ]]; then
+  if [[ $file_name != "${restore_to_file}" ]]; then
     print_error "'$restore_target_name': File not found"
     return 2
   fi
@@ -338,3 +338,68 @@ parameters=$(getopt -n "$SCRIPT_NAME" \
   -l help -l version \
   -- "$@")
 
+if [[ $? -ne 0 ]]; then
+  echo 'Try --help option for more information' 1>&2
+  exit 1
+fi
+eval set -- "$parameters"
+
+# TRASHED_DIRECTORYは呼び出し側で環境変数として指定してもよい
+trash_base_directory=${TRASH_DIRECTORY:-$DEFAULT_TRASH_BASE_DIRECTORY}
+
+while [[ $# -gt 0 ]]
+do
+  case "$1" in
+    -d | --directory)
+      trash_base_directory=$2
+      shift 2
+      ;;
+    --help)
+      print_help
+      exit 0
+      ;;
+    --version)
+      print_version
+      exit 0
+      ;;
+    --)
+      shift
+      break;
+      ;;
+  esac
+done
+
+if [[ -z $trash_base_directory ]]; then
+  print_error 'missing directory operand'
+  exit 1
+fi
+
+result=0
+
+if [[ $sub_command == put ]]; then
+  if [[ $# -le 0 ]]; then
+    print_error 'missing file operand'
+    exit 1
+  fi
+
+  for i in "$@"
+  do
+    trash_put "$trash_base_directory" "$1" || result=$?
+  done
+
+elif [[ $sub_command == list ]]; then
+  trash_list "$trash_base_directory"
+  result=$?
+
+elif [[ $sub_command == restore ]]; then
+  if [[ $# -le 0 ]]; then
+    print_error 'missing file operand'
+    exit 1
+  fi
+
+  trash_restore "$trash_base_directory" "$1" "$2"
+  result=$?
+
+fi
+
+exit "$result"
