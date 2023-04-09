@@ -1,10 +1,34 @@
 #!/bin/bash
 
+readonly SCRIPT_NAME="{0##*/}"
 readonly BASE_DIR="$HOME/myyaml"
 readonly DEST_DIR="$HOME/myyaml_dest"
-readonly DEFAULT_TARGET="$DEST_DIR/wordpress-mysql.yaml"
 
-reverse_flag=1
+parameters=$(getopt -n "SCRIPT_NAME" \
+  -o rf: \
+  -l reverse -l file: \
+  -- "$@")
+
+target_file="$DEST_DIR/wordpress-mysql.yaml"
+reverse_flag=0
+while [[ $# -gt 0 ]]
+do
+  case "$1" in
+    -r | --reverse)
+      reverse_flag=1
+      shift
+      ;;
+    -f | --file)
+      target_file="$DEST_DIR/$2"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+  esac
+done
+
 
 yaml_array=()
 
@@ -16,16 +40,17 @@ if [ ! -d $DEST_DIR ]; then
   mkdir $DEST_DIR
 fi
 
-if [ -z DEFAULT_TARGET ]; then
-  touch "$DEFAULT_TARGET"
-  chmod +x "$DEFAULT_TARGET"
-  chown $USER:$USER "$DEFAULT_TARGET"
+if [ -z target_file ]; then
+  touch "$target_file"
+  chmod +x "$target_file"
+  chown $USER:$USER "$target_file"
 else
-  echo -n "" > $DEFAULT_TARGET
+  echo -n "" > $target_file
 fi
 
-for path in "$BASE_DIR/*"; do
+for path in $BASE_DIR/*; do
   yaml_array+=("$path")
+  echo $yaml_array
 done
 
 echo ${#yaml_array[*]}
@@ -39,20 +64,19 @@ done
 #IFS=$'\n'
 if [ $reverse_flag -eq 1 ]; then
   echo descending
-  sorted_array=($(echo ${yaml_array[@]} | sort -r))
+  sorted_array=($(printf "%s\n" ${yaml_array[@]} | sort -r))
 else
   echo ascending
-  sorted_array=($(echo ${yaml_array[@]} | sort))
+  sorted_array=($(printf "%s\n" ${yaml_array[@]} | sort))
 fi
 #IFS=$orginal_ifs
 
 for file_path in ${sorted_array[@]}; do
   echo $file_path
-  echo --- >> $DEFAULT_TARGET
+  echo --- >> $target_file
   while IFS= read line; do
-    echo "$line" >> $DEFAULT_TARGET
+    echo "$line" >> $target_file
   done < $file_path
 done
 
-sed -i '1d' $DEFAULT_TARGET
-# cat $DEFAULT_TARGET | sed -i '1d' $DEFAULT_TARGET
+sed -i '1d' $target_file
