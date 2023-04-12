@@ -9,7 +9,10 @@ parameters=$(getopt -n "SCRIPT_NAME" \
   -l reverse -l file: \
   -- "$@")
 
-target_file="$DEST_DIR/wordpress-mysql.yaml"
+create_file="$DEST_DIR/create-resource.yaml"
+delete_file="$DEST_DIR/delete-resource.yaml"
+target_file=""
+
 reverse_flag=0
 while [[ $# -gt 0 ]]
 do
@@ -29,6 +32,13 @@ do
   esac
 done
 
+if [ -z $target_file ]; then
+  if [ $reverse_flag -eq 1 ]; then
+    target_file=$delete_file
+  else
+    target_file=$create_file
+  fi
+fi
 
 yaml_array=()
 
@@ -40,12 +50,12 @@ if [ ! -d $DEST_DIR ]; then
   mkdir $DEST_DIR
 fi
 
-if [ -z target_file ]; then
+if [ ! -e $target_file ]; then
   touch "$target_file"
   chmod +x "$target_file"
   chown $USER:$USER "$target_file"
 else
-  echo -n "" > $target_file
+  echo -n > $target_file
 fi
 
 for path in $BASE_DIR/*; do
